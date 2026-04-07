@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Serene Calendar UI
 
-## Getting Started
+A beautiful, interactive wall calendar with glassmorphism design built with Next.js 16, React, and Tailwind CSS.
 
-First, run the development server:
+## Design Choices
+
+### Architecture
+- **Next.js 16 with App Router**: Uses React Server Components where possible, with 'use client' for interactive components
+- **Component Structure**: Separated into focused components (CalendarGrid, NotesSection, Clock, MiniWhiteboard) for maintainability
+- **State Management**: Uses React useState/useReducer for local state, useLocalStorage for persisting user preferences
+
+### Performance Optimizations
+- **Isolated Clock Component**: The Clock component runs its own timer with useEffect, preventing re-renders of the entire WallCalendar every second
+- **React.memo on CalendarGrid**: Memoized to prevent unnecessary re-renders when parent components update
+- **useCallback for Event Handlers**: Prevents creating new function references on each render
+
+### Features
+- **Month Navigation**: j/k keyboard shortcuts for Vim-style navigation, plus arrow buttons
+- **Date Selection**: Click to select start/end dates, drag to select ranges
+- **Notes with Markdown**: Notes section supports markdown rendering with syntax highlighting (react-markdown + react-syntax-highlighter)
+- **Customizable Clock**: Three styles - digital, analog, minimal
+- **Opacity Control**: Adjustable card opacity (5-100%), switches to dark text at 100% for visibility
+- **Holidays**: Pre-defined holidays with dot indicators and popup on click
+- **Infinite Scroll**: CalendarGrid supports virtualized scrolling for future expansion
+
+### Styling
+- **Glassmorphism**: Semi-transparent cards with blur effects using rgba backgrounds
+- **Responsive**: Works on mobile and desktop
+- **Animations**: Framer Motion for smooth transitions and hover effects
+- **Theme**: Dark green gradient background with pastel light green when opacity is high
+
+## Running Locally
+
+1. Navigate to the project directory:
+   ```bash
+   cd wall-calendar
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open http://localhost:3000 in your browser
+
+## Building for Production
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The production build will be in the `.next` directory. To start the production server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Keyboard Shortcuts
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `j` - Go to previous month
+- `k` - Go to next month
+- Arrow keys - Navigate days (when focused)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDay, WEEKDAYS, isSameDay, isInRange } from '@/lib/calendar-utils';
 
@@ -12,9 +12,12 @@ interface CalendarGridProps {
   selectedEnd: Date | null;
   onSelectStart: (date: Date) => void;
   onSelectEnd: (date: Date | null) => void;
+  onMonthChange?: (year: number, month: number) => void;
+  containerOpacity?: number;
 }
 
-export default function CalendarGrid({
+// Memoize to prevent unnecessary re-renders
+const CalendarGrid = memo(function CalendarGrid({
   year,
   month,
   days,
@@ -22,10 +25,15 @@ export default function CalendarGrid({
   selectedEnd,
   onSelectStart,
   onSelectEnd,
+  onMonthChange,
+  containerOpacity = 20
 }: CalendarGridProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [showHoliday, setShowHoliday] = useState<{ name: string | null; position: { x: number; y: number } } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [isInfiniteScrollEnabled, setIsInfiniteScrollEnabled] = useState(false);
+  const [displayRange, setDisplayRange] = useState({ startYear: year, startMonth: month, endYear: year, endMonth: month });
 
   const handleDayClick = useCallback((day: CalendarDay) => {
     if (day.isHoliday && day.isCurrentMonth && day.holidayName) {
@@ -54,6 +62,29 @@ export default function CalendarGrid({
     }
     return selectedEnd;
   }, [selectedStart, selectedEnd, hoverDate]);
+
+  // Infinite scroll detection
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !isInfiniteScrollEnabled) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      
+      // Load more months when near bottom
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
+        setDisplayRange(prev => {
+          const nextMonth = prev.endMonth === 11 ? 0 : prev.endMonth + 1;
+          const nextYear = prev.endMonth === 11 ? prev.endYear + 1 : prev.endYear;
+          onMonthChange?.(nextYear, nextMonth);
+          return { ...prev, endMonth: nextMonth, endYear: nextYear };
+        });
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isInfiniteScrollEnabled, onMonthChange]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -97,14 +128,54 @@ export default function CalendarGrid({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedIndex, days, handleDayClick]);
 
+  // Toggle infinite scroll with scroll wheel
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // Enable infinite scroll on scroll
+      if (Math.abs(e.deltaY) > 10) {
+        setIsInfiniteScrollEnabled(true);
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  const isDarkText = containerOpacity >= 100;
+  const textColor = isDarkText ? 'text-black' : 'text-white';
+  const textColorSecondary = isDarkText ? 'text-black/60' : 'text-white/60';
+  const textColorMuted = isDarkText ? 'text-black/30' : 'text-white/20';
+  const textColorHighlight = isDarkText ? 'text-yellow-700' : 'text-yellow-200';
+  const rangeBgColor = isDarkText ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const selectedBgColor = isDarkText ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)';
+
   return (
-    <div className="glass-calendar">
+    <div ref={containerRef} className="glass-calendar max-h-[400px] overflow-y-auto">
+      {/* Holiday popup - moved to top */}
+      <AnimatePresence>
+        {showHoliday && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className={`fixed px-3 py-1.5 bg-yellow-400/90 backdrop-blur-sm rounded-lg text-xs font-medium shadow-lg z-50 ${isDarkText ? 'text-black' : 'text-black'}`}
+            style={{
+              left: showHoliday.position.x,
+              top: 20,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            {showHoliday.name}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 mb-2">
+      <div className={`grid grid-cols-7 mb-2 sticky top-0 z-10 ${isDarkText ? 'bg-[#d4e8d4]' : 'bg-[#1a2e1a]'}`}>
         {WEEKDAYS.map((day) => (
           <div 
             key={day} 
-            className="text-center text-xs font-medium text-white/60 py-2"
+            className={`text-center text-xs font-medium py-2 ${textColorSecondary}`}
           >
             {day}
           </div>
@@ -122,7 +193,6 @@ export default function CalendarGrid({
           const isInRangeBg = inRange && !isStart && !isEnd;
           const isFocused = index === focusedIndex;
           
-          // Format date for accessibility
           const dateLabel = new Date(year, month, day.day).toLocaleDateString('en-US', { 
             month: 'long', 
             day: 'numeric', 
@@ -131,7 +201,7 @@ export default function CalendarGrid({
           
           return (
             <motion.button
-              key={index}
+              key={`${year}-${month}-${index}`}
               tabIndex={isFocused ? 0 : -1}
               onClick={() => handleDayClick(day)}
               onMouseEnter={() => {
@@ -146,17 +216,17 @@ export default function CalendarGrid({
               className={`
                 calendar-date relative aspect-square flex items-center justify-center flex-col
                 text-sm font-medium transition-all duration-300 rounded-lg outline-none
-                ${!day.isCurrentMonth ? 'text-white/20' : 'text-white/80'}
-                ${isSelected ? 'text-white calendar-date-selected' : ''}
-                ${isInRangeBg ? 'text-white' : ''}
+                ${!day.isCurrentMonth ? textColorMuted : textColor}
+                ${isSelected ? `${textColor} calendar-date-selected` : ''}
+                ${isInRangeBg ? textColor : ''}
                 ${isFocused ? 'ring-2 ring-white/50' : ''}
-                ${day.isHoliday && day.isCurrentMonth ? 'text-yellow-200' : ''}
+                ${day.isHoliday && day.isCurrentMonth ? textColorHighlight : ''}
               `}
               style={{
                 backgroundColor: isSelected 
-                  ? 'rgba(255,255,255,0.35)' 
+                  ? selectedBgColor 
                   : isInRangeBg 
-                    ? 'rgba(255,255,255,0.15)' 
+                    ? rangeBgColor 
                     : 'transparent',
               }}
             >
@@ -167,12 +237,10 @@ export default function CalendarGrid({
                 {day.day}
               </span>
               
-              {/* Today indicator */}
               {day.isToday && !isSelected && (
                 <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
               )}
               
-              {/* Holiday marker */}
               {day.isHoliday && day.isCurrentMonth && day.holidayName && !isSelected && (
                 <motion.div
                   whileHover={{ scale: 1.3 }}
@@ -216,4 +284,6 @@ export default function CalendarGrid({
       </AnimatePresence>
     </div>
   );
-}
+});
+
+export default CalendarGrid;

@@ -44,7 +44,7 @@ export const MONTHS: MonthData[] = [
   { name: 'December', image: 'https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=800&q=80', theme: { primary: '#4a2d3d', secondary: '#7a4a5a', accent: '#a46c7c' } },
 ];
 
-export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const HOLIDAYS: Record<number, { day: number; name: string }[]> = {
   0: [{ day: 1, name: "New Year's Day" }],

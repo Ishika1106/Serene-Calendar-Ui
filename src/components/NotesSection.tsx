@@ -3,6 +3,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Download, Search, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Note, formatDate } from '@/lib/calendar-utils';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import { downloadNotesAsText } from '@/lib/exportNotes';
@@ -23,6 +26,7 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [previewNoteId, setPreviewNoteId] = useState<string | null>(null);
 
   // Parse dates when notes are loaded
   useEffect(() => {
@@ -273,8 +277,43 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
                     </div>
                   ) : (
                     <>
-                      <p className="flex-1 text-sm text-white/80 break-words">{note.content}</p>
+                      {previewNoteId === note.id ? (
+                        <div className="flex-1 text-sm text-white/90 prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              code({node, className, children, ...props}) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                const isInline = !match;
+                                return !isInline && match ? (
+                                  <SyntaxHighlighter
+                                    style={oneDark}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    customStyle={{ margin: '0.5rem 0', borderRadius: '0.5rem', fontSize: '0.75rem' } as React.CSSProperties}
+                                  >
+                                    {String(children).replace(/\n$/, '')}
+                                  </SyntaxHighlighter>
+                                ) : (
+                                  <code className="bg-white/10 px-1 py-0.5 rounded text-yellow-300" {...props}>
+                                    {children}
+                                  </code>
+                                );
+                              }
+                            }}
+                          >
+                            {note.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="flex-1 text-sm text-white/80 break-words">{note.content}</p>
+                      )}
                       <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity duration-200">
+                        <button
+                          onClick={() => setPreviewNoteId(previewNoteId === note.id ? null : note.id)}
+                          className="text-xs px-2 py-1 text-white/40 hover:text-white rounded hover:bg-white/10"
+                        >
+                          {previewNoteId === note.id ? 'Edit' : 'Preview'}
+                        </button>
                         <button
                           onClick={() => startEdit(note)}
                           className="text-xs px-2 py-1 text-white/40 hover:text-white rounded hover:bg-white/10"

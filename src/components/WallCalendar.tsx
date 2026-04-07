@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback, useReducer } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Clock, Type, Eye, Moon, X } from 'lucide-react';
+import { Pencil, Clock as ClockIcon, Type, Eye, Moon, X } from 'lucide-react';
 import CalendarGrid from './CalendarGrid';
 import NotesSection from './NotesSection';
 import MiniWhiteboard from './MiniWhiteboard';
+import Clock, { ClockStyleSelector } from './Clock';
 import { generateCalendarDays, SelectedRange } from '@/lib/calendar-utils';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 
@@ -67,8 +68,11 @@ export default function WallCalendar() {
   const [fontStyle, setFontStyle] = useLocalStorage<FontStyle>('serene-font-style', 'sans');
   const [cardOpacity, setCardOpacity] = useLocalStorage<number>('serene-card-opacity', 20);
 
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [monthDirection, setMonthDirection] = useState<'left' | 'right'>('left');
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -105,13 +109,6 @@ export default function WallCalendar() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
-
-  // Clock timer
-  useEffect(() => {
-    setMounted(true);
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Throttled parallax using requestAnimationFrame
   useEffect(() => {
@@ -159,6 +156,30 @@ export default function WallCalendar() {
     setSelectedRange({ startDate: null, endDate: null });
   };
 
+  // Keyboard shortcuts: j/k for previous/next month, arrow keys also work
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch (e.key) {
+        case 'j':
+        case 'ArrowLeft':
+          handlePreviousMonth();
+          break;
+        case 'k':
+        case 'ArrowRight':
+          handleNextMonth();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handlePreviousMonth = () => {
     setMonthDirection('right');
     dispatch({ type: 'PREV_MONTH' });
@@ -179,21 +200,11 @@ export default function WallCalendar() {
     }
   };
 
-  // Compute rotation values for analog clock
-  const hourRotation = (currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5;
-  const minuteRotation = currentTime.getMinutes() * 6;
-
   const tools = [
     { id: 'whiteboard' as ToolType, icon: Pencil, label: 'Whiteboard' },
-    { id: 'clockstyle' as ToolType, icon: Clock, label: 'Clock' },
+    { id: 'clockstyle' as ToolType, icon: ClockIcon, label: 'Clock' },
     { id: 'font' as ToolType, icon: Type, label: 'Font' },
     { id: 'notes' as ToolType, icon: Eye, label: 'Notes' },
-  ];
-
-  const clockStyles: { id: ClockStyle; icon: any; label: string }[] = [
-    { id: 'digital', icon: Clock, label: 'Digital' },
-    { id: 'analog', icon: Clock, label: 'Analog' },
-    { id: 'minimal', icon: Moon, label: 'Minimal' },
   ];
 
   const fontStyles: { id: FontStyle; label: string; preview: string }[] = [
@@ -286,7 +297,7 @@ export default function WallCalendar() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                     </motion.button>
-                    <h2 className="text-xl font-medium text-white/90">{MONTHS[currentMonth]}</h2>
+                    <h2 className={`text-xl font-medium ${cardOpacity >= 100 ? 'text-black/90' : 'text-white/90'}`}>{MONTHS[currentMonth]} {currentYear}</h2>
                     <motion.button 
                       onClick={handleNextMonth}
                       whileHover={{ scale: 1.1 }}
@@ -315,6 +326,7 @@ export default function WallCalendar() {
                       selectedEnd={selectedRange.endDate}
                       onSelectStart={handleSelectStart}
                       onSelectEnd={handleSelectEnd}
+                      containerOpacity={cardOpacity}
                     />
                   </motion.div>
                 </div>
@@ -356,7 +368,7 @@ export default function WallCalendar() {
 
                 {/* Opacity Slider */}
                 <div className="flex items-center gap-2 px-2">
-                  <span className="text-white/50 text-xs whitespace-nowrap">Opacity:</span>
+                  <span className={`text-xs whitespace-nowrap ${cardOpacity >= 100 ? 'text-black/50' : 'text-white/50'}`}>Opacity:</span>
                   <motion.input
                     type="range"
                     min="5"
@@ -366,119 +378,15 @@ export default function WallCalendar() {
                     className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
                     whileTap={{ scale: 0.95 }}
                   />
-                  <span className="text-white/70 text-xs w-8">{cardOpacity}%</span>
+                  <span className={`text-xs w-8 ${cardOpacity >= 100 ? 'text-black/70' : 'text-white/70'}`}>{cardOpacity}%</span>
                 </div>
               </motion.div>
             </div>
 
             {/* Right Side: Clock + Notes */}
             <div className="lg:col-span-2 space-y-4">
-              {/* Clock with floating animation */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.25, ease: 'easeOut' }}
-                whileHover={{ y: -2 }}
-                className="glass-card glass-card-float-delayed"
-                style={{ background: `rgba(255, 255, 255, ${cardOpacity / 200})` }}
-              >
-                <div className="glass-container py-6">
-                  <AnimatePresence mode="wait">
-                    {clockStyle === 'digital' && (
-                      <motion.div
-                        key="digital"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-center"
-                      >
-                        <div className="text-6xl md:text-7xl font-light text-white/90 tracking-wider">
-                          {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </div>
-                        <motion.div 
-                          key={currentTime.toLocaleDateString()}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="text-white/50 mt-2 text-lg"
-                        >
-                          {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </motion.div>
-                      </motion.div>
-                    )}
-                    
-                    {clockStyle === 'analog' && (
-                      <motion.div
-                        key="analog"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="flex items-center justify-center"
-                      >
-                        <div className="relative w-40 h-40 rounded-full border-4 border-white/20">
-                          {[...Array(12)].map((_, i) => (
-                            <div
-                              key={i}
-                              className="absolute w-1 h-3 bg-white/40"
-                              style={{
-                                top: '8px',
-                                left: '50%',
-                                transform: `translateX(-50%) rotate(${i * 30}deg)`,
-                                transformOrigin: '50% 60px',
-                              }}
-                            />
-                          ))}
-                          {/* Hour hand with smooth CSS animation */}
-                          <div
-                            className="absolute w-1 h-10 bg-white rounded-full"
-                            style={{
-                              bottom: '50%',
-                              left: '50%',
-                              transformOrigin: 'bottom center',
-                              transform: `translateX(-50%) rotate(${hourRotation}deg)`,
-                              transition: 'transform 0.5s ease-out',
-                            }}
-                          />
-                          {/* Minute hand with smooth CSS animation */}
-                          <div
-                            className="absolute w-0.5 h-14 bg-white/80 rounded-full"
-                            style={{
-                              bottom: '50%',
-                              left: '50%',
-                              transformOrigin: 'bottom center',
-                              transform: `translateX(-50%) rotate(${minuteRotation}deg)`,
-                              transition: 'transform 0.5s ease-out',
-                            }}
-                          />
-                          <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
-                        </div>
-                      </motion.div>
-                    )}
-                    
-                    {clockStyle === 'minimal' && (
-                      <motion.div
-                        key="minimal"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="text-center"
-                      >
-                        <div className="text-8xl font-thin text-white/90">
-                          {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <motion.div 
-                          key={`minimal-${currentTime.getDate()}`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-white/40 text-xl mt-2 uppercase tracking-widest"
-                        >
-                          {currentTime.toLocaleDateString([], { weekday: 'long' })}
-                        </motion.div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
+              {/* Clock - isolated component with its own timer */}
+              <Clock style={clockStyle} containerOpacity={cardOpacity} />
 
               {/* Notes / Whiteboard Section */}
               <motion.div
@@ -524,40 +432,11 @@ export default function WallCalendar() {
                     )}
                     
                     {activeTool === 'clockstyle' && (
-                      <motion.div
-                        key="clockstyle"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="py-4"
-                      >
-                        <div className="grid grid-cols-3 gap-3">
-                          {clockStyles.map((style) => {
-                            const Icon = style.icon;
-                            const isActive = clockStyle === style.id;
-                            
-                            return (
-                              <motion.button
-                                key={style.id}
-                                onClick={() => setClockStyle(style.id)}
-                                whileHover={{ scale: 1.03, y: -2 }}
-                                whileTap={{ scale: 0.97 }}
-                                className={`
-                                  flex flex-col items-center gap-2 p-4 rounded-xl transition-all
-                                  ${isActive 
-                                    ? 'bg-white/25 text-white shadow-lg' 
-                                    : 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
-                                  }
-                                `}
-                              >
-                                <Icon size={24} />
-                                <span className="text-sm">{style.label}</span>
-                              </motion.button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
+                      <ClockStyleSelector 
+                        currentStyle={clockStyle} 
+                        onStyleChange={setClockStyle}
+                        containerOpacity={cardOpacity}
+                      />
                     )}
                     
                     {activeTool === 'font' && (
