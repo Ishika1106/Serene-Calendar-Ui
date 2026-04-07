@@ -5,6 +5,7 @@ import {
   Undo, Redo, Trash2, GripVertical,
   Pencil, Paintbrush, Droplet, PenTool, Download
 } from 'lucide-react';
+import { useLocalStorage } from '@/lib/useLocalStorage';
 
 interface DrawPoint {
   x: number;
@@ -19,7 +20,7 @@ interface DrawLine {
   tool: string;
 }
 
-const STORAGE_KEY = 'forest-whiteboard-drawing';
+const STORAGE_KEY = 'serene-whiteboard-drawings';
 
 const MARKER_COLORS = [
   '#77f2ac', // light green
@@ -39,9 +40,10 @@ const PEN_TOOLS = [
 
 export default function MiniWhiteboard() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const committedCanvasRef = useRef<HTMLCanvasElement>(null);
+  const activeCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [lines, setLines] = useState<DrawLine[]>([]);
+  const [lines, setLines] = useLocalStorage<DrawLine[]>(STORAGE_KEY, []);
   const [currentLine, setCurrentLine] = useState<DrawPoint[]>([]);
   const [brushColor, setBrushColor] = useState('#77f2ac');
   const [brushSize, setBrushSize] = useState(3);
@@ -52,37 +54,24 @@ export default function MiniWhiteboard() {
   const [canvasSize, setCanvasSize] = useState({ width: 400, height: 250 });
   const [isResizing, setIsResizing] = useState(false);
 
-  // Load from localStorage
+  // Initialize history when lines change
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setLines(parsed.drawings || []);
-        setHistory([parsed.drawings || []]);
-        setHistoryIndex(0);
-        if (parsed.size) setCanvasSize(parsed.size);
-      } catch (e) {
-        console.error('Failed to load drawings:', e);
-      }
-    } else {
-      setHistory([[]]);
+    if (history.length === 0 || historyIndex === -1) {
+      setHistory([lines]);
+      setHistoryIndex(0);
     }
   }, []);
 
-  // Save to localStorage
+  // Save to localStorage when lines change
   useEffect(() => {
-    if (lines.length > 0 || history.length > 1) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
-        drawings: lines, 
-        size: canvasSize 
-      }));
+    if (lines.length > 0) {
+      setLines(lines);
     }
-  }, [lines, canvasSize]);
+  }, [lines, setLines]);
 
-  // Draw on canvas
+  // Draw committed lines (only when lines change - not during drawing)
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = committedCanvasRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
@@ -106,7 +95,7 @@ export default function MiniWhiteboard() {
       ctx.stroke();
     }
     
-    // Draw all lines
+    // Draw all committed lines
     lines.forEach((line) => {
       if (line.points.length < 2) return;
       ctx.globalAlpha = line.opacity;
@@ -121,10 +110,22 @@ export default function MiniWhiteboard() {
       });
       ctx.stroke();
     });
+    ctx.globalAlpha = 1;
+  }, [lines]);
+
+  // Draw active line (redraws on every mouse move - separate canvas)
+  useEffect(() => {
+    const canvas = activeCanvasRef.current;
+    if (!canvas) return;
     
-    // Draw current line
-    ctx.globalAlpha = brushOpacity;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw current line being drawn
     if (currentLine.length > 1) {
+      ctx.globalAlpha = brushOpacity;
       ctx.beginPath();
       ctx.strokeStyle = brushColor;
       ctx.lineWidth = brushSize;
@@ -135,12 +136,12 @@ export default function MiniWhiteboard() {
         ctx.lineTo(point.x, point.y);
       });
       ctx.stroke();
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
-  }, [lines, currentLine, brushColor, brushSize, brushOpacity]);
+  }, [currentLine, brushColor, brushSize, brushOpacity]);
 
   const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
+    const canvas = activeCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
@@ -179,7 +180,6 @@ export default function MiniWhiteboard() {
     setIsDrawing(false);
     
     if (currentLine.length > 0) {
-      const tool = PEN_TOOLS.find(t => t.id === activeTool);
       const newLine: DrawLine = {
         points: currentLine,
         color: brushColor,
@@ -204,7 +204,6 @@ export default function MiniWhiteboard() {
     newHistory.push([]);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ drawings: [], size: canvasSize }));
   };
 
   const undo = () => {
@@ -247,7 +246,7 @@ export default function MiniWhiteboard() {
   }, [canvasSize]);
 
   const saveWhiteboard = () => {
-    const canvas = canvasRef.current;
+    const canvas = committedCanvasRef.current;
     if (!canvas) return;
     
     // Create a temporary canvas for white background
@@ -257,11 +256,11 @@ export default function MiniWhiteboard() {
     const ctx = tempCanvas.getContext('2d');
     if (!ctx) return;
     
-    // Fill white background
+    // Fill background
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     
-    // Draw the original canvas
+    // Draw the committed canvas
     ctx.drawImage(canvas, 0, 0);
     
     // Download
@@ -270,13 +269,6 @@ export default function MiniWhiteboard() {
     link.href = tempCanvas.toDataURL('image/png');
     link.click();
   };
-
-  const saveToLocalStorage = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
-      drawings: lines, 
-      size: canvasSize 
-    }));
-  }, [lines, canvasSize]);
 
   return (
     <div className="relative">
@@ -392,7 +384,7 @@ export default function MiniWhiteboard() {
         <span className="text-white/70 text-xs w-6">{Math.round(brushOpacity * 100)}%</span>
       </div>
 
-      {/* Drawing Canvas Container */}
+      {/* Drawing Canvas Container - Two Canvas Pattern */}
       <div 
         ref={containerRef}
         className="relative rounded-xl overflow-hidden bg-black/20 border border-white/10"
@@ -403,11 +395,20 @@ export default function MiniWhiteboard() {
           cursor: isResizing ? 'nwse-resize' : 'crosshair'
         }}
       >
+        {/* Canvas 1: Committed lines (only redraws when stroke ends) */}
         <canvas
-          ref={canvasRef}
+          ref={committedCanvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
-          className="w-full h-full touch-none"
+          className="absolute inset-0 w-full h-full"
+        />
+        
+        {/* Canvas 2: Active line (redraws on every mouse move) */}
+        <canvas
+          ref={activeCanvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          className="absolute inset-0 w-full h-full touch-none"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={endDrawing}

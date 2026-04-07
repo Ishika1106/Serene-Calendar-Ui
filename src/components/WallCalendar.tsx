@@ -1,43 +1,83 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, useReducer } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pencil, Clock, Type, Eye, Moon } from 'lucide-react';
+import { Pencil, Clock, Type, Eye, Moon, X } from 'lucide-react';
 import CalendarGrid from './CalendarGrid';
 import NotesSection from './NotesSection';
 import MiniWhiteboard from './MiniWhiteboard';
 import { generateCalendarDays, SelectedRange } from '@/lib/calendar-utils';
+import { useLocalStorage } from '@/lib/useLocalStorage';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-type ToolType = 'whiteboard' | 'clockstyle' | 'font' | 'view';
+type ToolType = 'whiteboard' | 'clockstyle' | 'font' | 'notes';
 type ClockStyle = 'digital' | 'analog' | 'minimal';
 type FontStyle = 'serif' | 'sans' | 'mono' | 'display';
 
+// Reducer for calendar navigation to avoid stale state
+type CalendarState = {
+  month: number;
+  year: number;
+};
+
+type CalendarAction = 
+  | { type: 'PREV_MONTH' }
+  | { type: 'NEXT_MONTH' };
+
+function calendarReducer(state: CalendarState, action: CalendarAction): CalendarState {
+  switch (action.type) {
+    case 'PREV_MONTH':
+      if (state.month === 0) {
+        return { month: 11, year: state.year - 1 };
+      }
+      return { month: state.month - 1, year: state.year };
+    case 'NEXT_MONTH':
+      if (state.month === 11) {
+        return { month: 0, year: state.year + 1 };
+      }
+      return { month: state.month + 1, year: state.year };
+    default:
+      return state;
+  }
+}
+
 export default function WallCalendar() {
   const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  
+  // Calendar navigation with useReducer
+  const [calendarState, dispatch] = useReducer(calendarReducer, {
+    month: today.getMonth(),
+    year: today.getFullYear(),
+  });
+  const currentMonth = calendarState.month;
+  const currentYear = calendarState.year;
+
   const [selectedRange, setSelectedRange] = useState<SelectedRange>({
     startDate: null,
     endDate: null,
   });
-  const [activeTool, setActiveTool] = useState<ToolType>('view');
-  const [clockStyle, setClockStyle] = useState<ClockStyle>('digital');
-  const [fontStyle, setFontStyle] = useState<FontStyle>('sans');
-  const [cardOpacity, setCardOpacity] = useState(20);
+  const [activeTool, setActiveTool] = useState<ToolType>('notes');
+  
+  // Persisted settings using useLocalStorage
+  const [clockStyle, setClockStyle] = useLocalStorage<ClockStyle>('serene-clock-style', 'digital');
+  const [fontStyle, setFontStyle] = useLocalStorage<FontStyle>('serene-font-style', 'sans');
+  const [cardOpacity, setCardOpacity] = useLocalStorage<number>('serene-card-opacity', 20);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
   const [monthDirection, setMonthDirection] = useState<'left' | 'right'>('left');
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const animationFrameRef = useRef<number | null>(null);
   const [notesHeight, setNotesHeight] = useState(320);
   const notesSectionRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
 
+  // Resize handler
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -66,24 +106,40 @@ export default function WallCalendar() {
     };
   }, [isResizing]);
 
+  // Clock timer
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Background parallax on mouse move
+  // Throttled parallax using requestAnimationFrame
   useEffect(() => {
+    let targetPos = { x: 0, y: 0 };
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
-      const y = ((e.clientY - rect.top) / rect.height - 0.5) * 10;
-      setMousePos({ x, y });
+      targetPos = {
+        x: ((e.clientX - rect.left) / rect.width - 0.5) * 10,
+        y: ((e.clientY - rect.top) / rect.height - 0.5) * 10,
+      };
+    };
+
+    const updatePosition = () => {
+      setMousePos(targetPos);
+      animationFrameRef.current = requestAnimationFrame(updatePosition);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    animationFrameRef.current = requestAnimationFrame(updatePosition);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const days = useMemo(() => 
@@ -105,14 +161,12 @@ export default function WallCalendar() {
 
   const handlePreviousMonth = () => {
     setMonthDirection('right');
-    setCurrentMonth(prev => prev === 0 ? 11 : prev - 1);
-    if (currentMonth === 0) setCurrentYear(prev => prev - 1);
+    dispatch({ type: 'PREV_MONTH' });
   };
 
   const handleNextMonth = () => {
     setMonthDirection('left');
-    setCurrentMonth(prev => prev === 11 ? 0 : prev + 1);
-    if (currentMonth === 11) setCurrentYear(prev => prev + 1);
+    dispatch({ type: 'NEXT_MONTH' });
   };
 
   const getFontFamily = () => {
@@ -125,11 +179,15 @@ export default function WallCalendar() {
     }
   };
 
+  // Compute rotation values for analog clock
+  const hourRotation = (currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5;
+  const minuteRotation = currentTime.getMinutes() * 6;
+
   const tools = [
     { id: 'whiteboard' as ToolType, icon: Pencil, label: 'Whiteboard' },
     { id: 'clockstyle' as ToolType, icon: Clock, label: 'Clock' },
     { id: 'font' as ToolType, icon: Type, label: 'Font' },
-    { id: 'view' as ToolType, icon: Eye, label: 'View' },
+    { id: 'notes' as ToolType, icon: Eye, label: 'Notes' },
   ];
 
   const clockStyles: { id: ClockStyle; icon: any; label: string }[] = [
@@ -370,27 +428,27 @@ export default function WallCalendar() {
                               }}
                             />
                           ))}
-                          <motion.div
+                          {/* Hour hand with smooth CSS animation */}
+                          <div
                             className="absolute w-1 h-10 bg-white rounded-full"
                             style={{
                               bottom: '50%',
                               left: '50%',
                               transformOrigin: 'bottom center',
-                              transform: `translateX(-50%) rotate(${(currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5}deg)`,
+                              transform: `translateX(-50%) rotate(${hourRotation}deg)`,
+                              transition: 'transform 0.5s ease-out',
                             }}
-                            animate={{ rotate: [(currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5] }}
-                            transition={{ duration: 0.5 }}
                           />
-                          <motion.div
+                          {/* Minute hand with smooth CSS animation */}
+                          <div
                             className="absolute w-0.5 h-14 bg-white/80 rounded-full"
                             style={{
                               bottom: '50%',
                               left: '50%',
                               transformOrigin: 'bottom center',
-                              transform: `translateX(-50%) rotate(${currentTime.getMinutes() * 6}deg)`,
+                              transform: `translateX(-50%) rotate(${minuteRotation}deg)`,
+                              transition: 'transform 0.5s ease-out',
                             }}
-                            animate={{ rotate: [currentTime.getMinutes() * 6] }}
-                            transition={{ duration: 0.5 }}
                           />
                           <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
                         </div>
@@ -422,13 +480,12 @@ export default function WallCalendar() {
                 </div>
               </motion.div>
 
-              {/* Notes / Whiteboard Section with slide-up animation */}
+              {/* Notes / Whiteboard Section */}
               <motion.div
                 ref={notesSectionRef}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-                whileHover={{ y: -2 }}
                 className="glass-card"
                 style={{ background: `rgba(255, 255, 255, ${cardOpacity / 200})`, height: notesHeight }}
               >
@@ -439,7 +496,7 @@ export default function WallCalendar() {
                 />
                 <div className="glass-container py-4 h-full overflow-hidden">
                   <AnimatePresence mode="wait">
-                    {activeTool === 'view' && (
+                    {activeTool === 'notes' && (
                       <motion.div
                         key="notes"
                         initial={{ opacity: 0, y: 20 }}
@@ -461,7 +518,6 @@ export default function WallCalendar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -30 }}
                         transition={{ duration: 0.3 }}
-                        className="animate-slide-up"
                       >
                         <MiniWhiteboard />
                       </motion.div>
@@ -563,7 +619,7 @@ export default function WallCalendar() {
                     onClick={clearSelection}
                     className="ml-3 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
                   >
-                    ×
+                    <X size={12} />
                   </button>
                 </motion.div>
               </motion.div>

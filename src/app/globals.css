@@ -2,6 +2,9 @@
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
+  --glass-blur: 20px;
+  --glass-bg: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.15);
 }
 
 * {
@@ -15,12 +18,15 @@ body {
 }
 
 /* ================================================
-   PAGE LOAD ANIMATIONS
+   FLOATING GLASS CARD ANIMATION
    ================================================ */
-@keyframes pageEntrance {
+@keyframes glassFloat {
   0% {
     opacity: 0;
     transform: translateY(20px);
+  }
+  50% {
+    transform: translateY(-4px);
   }
   100% {
     opacity: 1;
@@ -28,59 +34,30 @@ body {
   }
 }
 
-@keyframes pageEntranceFade {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.animate-page-enter {
-  animation: pageEntrance 0.6s ease-out forwards;
-}
-
-.animate-page-enter-delayed {
-  opacity: 0;
-  animation: pageEntrance 0.6s ease-out forwards;
-  animation-delay: var(--delay, 0.1s);
-}
-
-/* ================================================
-   FLOATING GLASS CARD ANIMATION
-   ================================================ */
-@keyframes glassFloat {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
 .glass-card-float {
-  animation: glassFloat 7s ease-in-out infinite;
+  animation: glassFloat 2s ease-out forwards;
 }
 
 .glass-card-float-delayed {
-  animation: glassFloat 7s ease-in-out infinite;
-  animation-delay: 2s;
+  opacity: 0;
+  animation: glassFloat 2s ease-out forwards;
+  animation-delay: 0.5s;
 }
 
 /* ================================================
    SHADOW INTENSIFICATION ON HOVER
    ================================================ */
 .glass-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: 1.5rem;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
+  will-change: transform;
 }
 
 .glass-card:hover {
@@ -136,24 +113,6 @@ body {
 }
 
 /* ================================================
-   WHITEBOARD SLIDE UP
-   ================================================ */
-@keyframes slideUp {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out forwards;
-}
-
-/* ================================================
    NOTES PANEL EXPAND/COLLAPSE
    ================================================ */
 .notes-panel {
@@ -171,17 +130,6 @@ body {
 /* ================================================
    CALENDAR GRID ANIMATIONS
    ================================================ */
-@keyframes dateHover {
-  0% {
-    transform: translateY(0) scale(1);
-    filter: brightness(1);
-  }
-  100% {
-    transform: translateY(-2px) scale(1.03);
-    filter: brightness(1.1);
-  }
-}
-
 @keyframes datePop {
   0% {
     transform: scale(0.9);
@@ -191,17 +139,6 @@ body {
   }
   100% {
     transform: scale(1);
-  }
-}
-
-@keyframes rangeHighlight {
-  0% {
-    opacity: 0;
-    transform: scaleX(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scaleX(1);
   }
 }
 
@@ -216,43 +153,6 @@ body {
 
 .calendar-date-selected {
   animation: datePop 0.2s ease-out;
-}
-
-.calendar-range-animate {
-  animation: rangeHighlight 0.3s ease-out;
-}
-
-/* ================================================
-   MONTH CHANGE SLIDE
-   ================================================ */
-@keyframes monthSlideLeft {
-  0% {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes monthSlideRight {
-  0% {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-left {
-  animation: monthSlideLeft 0.3s ease-out;
-}
-
-.animate-slide-right {
-  animation: monthSlideRight 0.3s ease-out;
 }
 
 /* ================================================
@@ -314,6 +214,7 @@ body {
   align-items: center;
   font-size: 0.875rem;
   transition: transform 0.2s ease;
+  will-change: backdrop-filter;
 }
 
 .glass-badge:hover {

@@ -1,49 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Download, Search, X } from 'lucide-react';
 import { Note, formatDate } from '@/lib/calendar-utils';
+import { useLocalStorage } from '@/lib/useLocalStorage';
+import { downloadNotesAsText } from '@/lib/exportNotes';
 
 interface NotesSectionProps {
   selectedStart: Date | null;
   selectedEnd: Date | null;
 }
 
-const STORAGE_KEY = 'forest-calendar-notes';
+const STORAGE_KEY = 'serene-calendar-notes';
 
 export default function NotesSection({ selectedStart, selectedEnd }: NotesSectionProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useLocalStorage<Note[]>(STORAGE_KEY, []);
   const [newNote, setNewNote] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'date'>('general');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Load from localStorage
+  // Parse dates when notes are loaded
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setNotes(parsed.map((n: Note) => ({
-          ...n,
-          createdAt: new Date(n.createdAt),
-          date: n.date ? new Date(n.date) : null,
-        })));
-      } catch (e) {
-        console.error('Failed to parse notes:', e);
-      }
-    }
+    setNotes(prev => prev.map(n => ({
+      ...n,
+      createdAt: new Date(n.createdAt),
+      date: n.date ? new Date(n.date) : null,
+    })));
   }, []);
 
-  // Save to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-  }, [notes]);
-
-  const addNote = () => {
+  const addNote = useCallback(() => {
     if (!newNote.trim()) return;
     
     const note: Note = {
@@ -53,111 +43,52 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
       createdAt: new Date(),
     };
     
-    setNotes([...notes, note]);
+    setNotes(prev => [...prev, note]);
     setNewNote('');
-  };
+  }, [newNote, activeTab, selectedStart, setNotes]);
 
-  const deleteNote = (id: string) => {
-    setNotes(notes.filter(n => n.id !== id));
-  };
+  const deleteNote = useCallback((id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+  }, [setNotes]);
 
-  const deleteAllNotes = () => {
-    if (confirm('Delete all notes?')) {
-      setNotes([]);
-    }
-  };
+  const deleteAllNotes = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
 
-  const startEdit = (note: Note) => {
+  const confirmDeleteAll = useCallback(() => {
+    setNotes([]);
+    setShowDeleteConfirm(false);
+  }, [setNotes]);
+
+  const cancelDeleteAll = useCallback(() => {
+    setShowDeleteConfirm(false);
+  }, []);
+
+  const startEdit = useCallback((note: Note) => {
     setEditingId(note.id);
     setEditContent(note.content);
-  };
+  }, []);
 
-  const saveEdit = () => {
+  const saveEdit = useCallback(() => {
     if (!editingId || !editContent.trim()) return;
     
-    setNotes(notes.map(n => 
+    setNotes(prev => prev.map(n => 
       n.id === editingId ? { ...n, content: editContent.trim() } : n
     ));
     setEditingId(null);
     setEditContent('');
-  };
+  }, [editingId, editContent, setNotes]);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditingId(null);
     setEditContent('');
-  };
+  }, []);
 
-  const exportNotes = () => {
-    const generalNotes = notes.filter(n => !n.date);
-    const dateNotes = notes.filter(n => n.date);
+  const exportNotes = useCallback(() => {
+    downloadNotesAsText(notes);
+  }, [notes]);
 
-    let content = '=============================================================\n';
-    content += '                 SERENE CALENDAR - NOTES\n';
-    content += '=============================================================\n\n';
-
-    if (generalNotes.length > 0) {
-      content += '-------------------------------------------------------------\n';
-      content += '                      MONTHLY NOTES\n';
-      content += '-------------------------------------------------------------\n\n';
-      
-      const groupedByMonth: Record<string, Note[]> = {};
-      generalNotes.forEach(note => {
-        const date = new Date(note.createdAt);
-        const key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
-        if (!groupedByMonth[key]) groupedByMonth[key] = [];
-        groupedByMonth[key].push(note);
-      });
-
-      Object.keys(groupedByMonth).sort().reverse().forEach(monthKey => {
-        const [year, month] = monthKey.split('-');
-        const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        content += monthName + '\n';
-        content += '-------------------------------------\n';
-        groupedByMonth[monthKey].forEach((note, idx) => {
-          const noteDate = new Date(note.createdAt);
-          content += '  ' + (idx + 1) + '. ' + note.content + '\n';
-          content += '     Created: ' + noteDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '\n\n';
-        });
-      });
-    }
-
-    if (dateNotes.length > 0) {
-      content += '\n-------------------------------------------------------------\n';
-      content += '                    SELECTED DATE NOTES\n';
-      content += '-------------------------------------------------------------\n\n';
-
-      dateNotes.sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
-      
-      let currentDate = '';
-      dateNotes.forEach((note, idx) => {
-        const noteDateStr = note.date ? formatDate(note.date) : '';
-        if (noteDateStr !== currentDate) {
-          currentDate = noteDateStr;
-          content += noteDateStr + '\n';
-          content += '-------------------------------------\n';
-        }
-        content += '  * ' + note.content + '\n\n';
-      });
-    }
-
-    if (generalNotes.length === 0 && dateNotes.length === 0) {
-      content += 'No notes to export.\n';
-    }
-
-    content += '\n=============================================================\n';
-    content += 'Exported on: ' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '\n';
-
-    const dateStr = new Date().toISOString().split('T')[0];
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'serene-calendar-notes-' + dateStr + '.txt';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const getFilteredNotes = () => {
+  const getFilteredNotes = useCallback(() => {
     let filtered: Note[] = [];
     
     if (activeTab === 'general') {
@@ -180,15 +111,15 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
     }
     
     return filtered;
-  };
+  }, [notes, activeTab, selectedStart, selectedEnd, searchQuery]);
 
   const filteredNotes = getFilteredNotes();
-  const getDateLabel = function() {
+  
+  const dateLabel = (() => {
     if (!selectedStart) return 'Select dates';
     if (selectedEnd) return formatDate(selectedStart) + ' - ' + formatDate(selectedEnd);
     return formatDate(selectedStart);
-  };
-  const dateLabel = getDateLabel();
+  })();
 
   return (
     <div className="relative">
@@ -371,6 +302,44 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
         {filteredNotes.length} note{filteredNotes.length !== 1 ? 's' : ''}
         {searchQuery && ` matching "${searchQuery}"`}
       </div>
+
+      {/* Delete confirmation modal - mobile responsive */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={cancelDeleteAll}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="bg-gray-900/90 backdrop-blur-lg p-6 rounded-2xl border border-white/20 shadow-2xl w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-medium text-white mb-2">Delete All Notes?</h3>
+              <p className="text-white/60 text-sm mb-4">This action cannot be undone.</p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelDeleteAll}
+                  className="px-4 py-2 text-sm text-white/70 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteAll}
+                  className="px-4 py-2 text-sm bg-red-500/80 hover:bg-red-500 text-white rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
