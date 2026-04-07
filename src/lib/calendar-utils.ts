@@ -3,6 +3,8 @@ export interface CalendarDay {
   day: number;
   isCurrentMonth: boolean;
   isToday: boolean;
+  isHoliday: boolean;
+  holidayName: string | null;
 }
 
 export interface Note {
@@ -44,19 +46,12 @@ export const MONTHS: MonthData[] = [
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export const HOLIDAYS: Record<string, string[]> = {
-  0: ['New Year\'s Day'],
-  1: [],
-  2: [],
-  3: [],
-  4: [],
-  5: [],
-  6: [],
-  7: [],
-  8: [],
-  9: [],
-  10: [],
-  11: ['Christmas Day'],
+export const HOLIDAYS: Record<number, { day: number; name: string }[]> = {
+  0: [{ day: 1, name: "New Year's Day" }],
+  1: [{ day: 26, name: 'Republic Day' }],
+  6: [{ day: 15, name: 'Independence Day' }],
+  8: [{ day: 2, name: 'Gandhi Jayanti' }],
+  11: [{ day: 25, name: 'Christmas Day' }],
 };
 
 export function getDaysInMonth(year: number, month: number): number {
@@ -71,6 +66,7 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   const today = new Date();
+  const monthHolidays = HOLIDAYS[month] || [];
   
   const days: CalendarDay[] = [];
   
@@ -84,17 +80,22 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
       day: daysInPrevMonth - i,
       isCurrentMonth: false,
       isToday: false,
+      isHoliday: false,
+      holidayName: null,
     });
   }
   
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month, i);
     const isToday = date.toDateString() === today.toDateString();
+    const holiday = monthHolidays.find(h => h.day === i);
     days.push({
       date,
       day: i,
       isCurrentMonth: true,
       isToday,
+      isHoliday: !!holiday,
+      holidayName: holiday?.name || null,
     });
   }
   
@@ -108,6 +109,8 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
       day: i,
       isCurrentMonth: false,
       isToday: false,
+      isHoliday: false,
+      holidayName: null,
     });
   }
   

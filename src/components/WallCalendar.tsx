@@ -32,7 +32,6 @@ export default function WallCalendar() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
   const [monthDirection, setMonthDirection] = useState<'left' | 'right'>('left');
-  const [prevTime, setPrevTime] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [notesHeight, setNotesHeight] = useState(320);
@@ -72,15 +71,6 @@ export default function WallCalendar() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Track previous time for flip animation
-  useEffect(() => {
-    const timeStr = currentTime.toLocaleTimeString();
-    if (timeStr !== prevTime && prevTime) {
-      // Trigger flip animation
-    }
-    setPrevTime(timeStr);
-  }, [currentTime, prevTime]);
 
   // Background parallax on mouse move
   useEffect(() => {
