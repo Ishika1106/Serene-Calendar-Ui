@@ -32,8 +32,7 @@ const CalendarGrid = memo(function CalendarGrid({
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [showHoliday, setShowHoliday] = useState<{ name: string | null; position: { x: number; y: number } } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
-  const [isInfiniteScrollEnabled, setIsInfiniteScrollEnabled] = useState(false);
-  const [displayRange, setDisplayRange] = useState({ startYear: year, startMonth: month, endYear: year, endMonth: month });
+  const [isAtBottom, setIsAtBottom] = useState(false);
 
   const handleDayClick = useCallback((day: CalendarDay) => {
     if (day.isHoliday && day.isCurrentMonth && day.holidayName) {
@@ -62,29 +61,6 @@ const CalendarGrid = memo(function CalendarGrid({
     }
     return selectedEnd;
   }, [selectedStart, selectedEnd, hoverDate]);
-
-  // Infinite scroll detection
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !isInfiniteScrollEnabled) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      
-      // Load more months when near bottom
-      if (scrollTop + clientHeight >= scrollHeight - 100) {
-        setDisplayRange(prev => {
-          const nextMonth = prev.endMonth === 11 ? 0 : prev.endMonth + 1;
-          const nextYear = prev.endMonth === 11 ? prev.endYear + 1 : prev.endYear;
-          onMonthChange?.(nextYear, nextMonth);
-          return { ...prev, endMonth: nextMonth, endYear: nextYear };
-        });
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [isInfiniteScrollEnabled, onMonthChange]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -128,18 +104,28 @@ const CalendarGrid = memo(function CalendarGrid({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedIndex, days, handleDayClick]);
 
-  // Toggle infinite scroll with scroll wheel
+  // Infinite scroll - detect when user scrolls near bottom and load more months
   useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      // Enable infinite scroll on scroll
-      if (Math.abs(e.deltaY) > 10) {
-        setIsInfiniteScrollEnabled(true);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // When within 50px of bottom, consider user at bottom
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsAtBottom(atBottom);
+      
+      if (atBottom && onMonthChange) {
+        // Load next month when scrolled to bottom
+        const nextMonth = month === 11 ? 0 : month + 1;
+        const nextYear = month === 11 ? year + 1 : year;
+        onMonthChange(nextYear, nextMonth);
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [year, month, onMonthChange]);
 
   const isDarkText = containerOpacity >= 100;
   const textColor = isDarkText ? 'text-black' : 'text-white';
@@ -262,26 +248,6 @@ const CalendarGrid = memo(function CalendarGrid({
           );
         })}
       </div>
-      
-      {/* Holiday popup */}
-      <AnimatePresence>
-        {showHoliday && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-            className="fixed px-3 py-1.5 bg-yellow-400/90 backdrop-blur-sm rounded-lg text-xs font-medium text-black shadow-lg z-50"
-            style={{
-              left: showHoliday.position.x,
-              top: showHoliday.position.y - 40,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            {showHoliday.name}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 });

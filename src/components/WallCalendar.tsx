@@ -27,7 +27,8 @@ type CalendarState = {
 
 type CalendarAction = 
   | { type: 'PREV_MONTH' }
-  | { type: 'NEXT_MONTH' };
+  | { type: 'NEXT_MONTH' }
+  | { type: 'SET_DATE'; month: number; year: number };
 
 function calendarReducer(state: CalendarState, action: CalendarAction): CalendarState {
   switch (action.type) {
@@ -41,6 +42,8 @@ function calendarReducer(state: CalendarState, action: CalendarAction): Calendar
         return { month: 0, year: state.year + 1 };
       }
       return { month: state.month + 1, year: state.year };
+    case 'SET_DATE':
+      return { month: action.month, year: action.year };
     default:
       return state;
   }
@@ -171,6 +174,31 @@ export default function WallCalendar() {
         case 'ArrowRight':
           handleNextMonth();
           break;
+        case 'g':
+          // Go to today
+          const today = new Date();
+          dispatch({ type: 'SET_DATE', month: today.getMonth(), year: today.getFullYear() });
+          break;
+        case 'Escape':
+          // Clear selection
+          setSelectedRange({ startDate: null, endDate: null });
+          break;
+        case 't':
+          // Toggle clock style
+          setClockStyle(prev => {
+            const styles: ClockStyle[] = ['digital', 'analog', 'minimal'];
+            const idx = styles.indexOf(prev);
+            return styles[(idx + 1) % styles.length];
+          });
+          break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+          // Tool shortcuts
+          const tools: ToolType[] = ['notes', 'whiteboard', 'clockstyle', 'font'];
+          setActiveTool(tools[parseInt(e.key) - 1]);
+          break;
         default:
           break;
       }
@@ -292,6 +320,7 @@ export default function WallCalendar() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                       className="p-2 rounded-full glass-button"
+                      aria-label="Previous month"
                     >
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -303,6 +332,7 @@ export default function WallCalendar() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
                       className="p-2 rounded-full glass-button"
+                      aria-label="Next month"
                     >
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -497,6 +527,7 @@ export default function WallCalendar() {
                   <button 
                     onClick={clearSelection}
                     className="ml-3 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+                    aria-label="Clear selection"
                   >
                     <X size={12} />
                   </button>

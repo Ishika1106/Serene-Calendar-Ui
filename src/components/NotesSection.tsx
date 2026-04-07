@@ -158,21 +158,21 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
           <button
             onClick={() => setShowSearch(!showSearch)}
             className={`p-2 rounded-lg transition-all ${showSearch ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
-            title="Search notes"
+            aria-label={showSearch ? "Close search" : "Search notes"}
           >
             {showSearch ? <X size={16} /> : <Search size={16} />}
           </button>
           <button
             onClick={exportNotes}
             className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
-            title="Export notes"
+            aria-label="Export notes"
           >
             <Download size={16} />
           </button>
           <button
             onClick={deleteAllNotes}
             className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-white/10"
-            title="Delete all notes"
+            aria-label="Delete all notes"
           >
             <Trash2 size={16} />
           </button>
@@ -265,12 +265,14 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
                       <button
                         onClick={saveEdit}
                         className="px-3 py-1 text-xs bg-white/20 text-white rounded hover:bg-white/30"
+                        aria-label="Save note"
                       >
                         Save
                       </button>
                       <button
                         onClick={cancelEdit}
                         className="px-3 py-1 text-xs text-white/50 hover:text-white"
+                        aria-label="Cancel editing"
                       >
                         Cancel
                       </button>
@@ -311,18 +313,21 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
                         <button
                           onClick={() => setPreviewNoteId(previewNoteId === note.id ? null : note.id)}
                           className="text-xs px-2 py-1 text-white/40 hover:text-white rounded hover:bg-white/10"
+                          aria-label={previewNoteId === note.id ? "Edit note" : "Preview note"}
                         >
                           {previewNoteId === note.id ? 'Edit' : 'Preview'}
                         </button>
                         <button
                           onClick={() => startEdit(note)}
                           className="text-xs px-2 py-1 text-white/40 hover:text-white rounded hover:bg-white/10"
+                          aria-label="Edit note"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => deleteNote(note.id)}
                           className="text-xs px-2 py-1 text-white/40 hover:text-red-400 rounded hover:bg-white/10"
+                          aria-label="Delete note"
                         >
                           Delete
                         </button>
@@ -365,12 +370,14 @@ export default function NotesSection({ selectedStart, selectedEnd }: NotesSectio
                 <button
                   onClick={cancelDeleteAll}
                   className="px-4 py-2 text-sm text-white/70 hover:text-white"
+                  aria-label="Cancel delete all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDeleteAll}
                   className="px-4 py-2 text-sm bg-red-500/80 hover:bg-red-500 text-white rounded-lg"
+                  aria-label="Confirm delete all notes"
                 >
                   Delete
                 </button>

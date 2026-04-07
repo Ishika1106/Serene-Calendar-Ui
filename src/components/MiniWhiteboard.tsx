@@ -291,7 +291,7 @@ export default function MiniWhiteboard() {
                   p-2 rounded-lg transition-all hover:scale-105
                   ${isActive ? 'bg-white/25 text-white' : 'text-white/50 hover:text-white hover:bg-white/10'}
                 `}
-                title={tool.label}
+                aria-label={tool.label}
               >
                 <Icon size={18} />
               </button>
@@ -305,7 +305,7 @@ export default function MiniWhiteboard() {
             onClick={undo}
             disabled={historyIndex <= 0}
             className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Undo"
+            aria-label="Undo"
           >
             <Undo size={18} />
           </button>
@@ -313,21 +313,21 @@ export default function MiniWhiteboard() {
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
             className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Redo"
+            aria-label="Redo"
           >
             <Redo size={18} />
           </button>
           <button
             onClick={clearCanvas}
             className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
-            title="Clear"
+            aria-label="Clear canvas"
           >
             <Trash2 size={18} />
           </button>
           <button
             onClick={saveWhiteboard}
             className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
-            title="Save as PNG"
+            aria-label="Save as PNG"
           >
             <Download size={18} />
           </button>
@@ -336,7 +336,7 @@ export default function MiniWhiteboard() {
 
       {/* Colors */}
       <div className="flex items-center gap-2 mb-3">
-        {MARKER_COLORS.map((color) => (
+        {MARKER_COLORS.map((color, index) => (
           <button
             key={color}
             onClick={() => setBrushColor(color)}
@@ -348,6 +348,7 @@ export default function MiniWhiteboard() {
               backgroundColor: color,
               boxShadow: color === '#133619' ? 'inset 0 0 0 2px rgba(255,255,255,0.3)' : 'none'
             }}
+            aria-label={`Color ${index + 1}`}
           />
         ))}
       </div>
