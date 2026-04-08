@@ -17,9 +17,7 @@ body {
   margin: 0;
 }
 
-/* ================================================
-   FLOATING GLASS CARD ANIMATION
-   ================================================ */
+/* Floating glass card animation */
 @keyframes glassFloat {
   0% {
     opacity: 0;
@@ -44,9 +42,7 @@ body {
   animation-delay: 0.5s;
 }
 
-/* ================================================
-   SHADOW INTENSIFICATION ON HOVER
-   ================================================ */
+/* Shadow intensification on hover */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -67,9 +63,7 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* ================================================
-   TOOLBAR ICON ANIMATIONS
-   ================================================ */
+/* Toolbar icon animations */
 @keyframes iconRotate {
   0% {
     transform: rotate(0deg);
@@ -105,31 +99,23 @@ body {
   animation: iconRotate 0.3s ease;
 }
 
-/* ================================================
-   OPACITY TRANSITION
-   ================================================ */
+/* Opacity transition */
 .opacity-transition {
   transition: background 0.3s ease;
 }
 
-/* ================================================
-   NOTES PANEL EXPAND/COLLAPSE
-   ================================================ */
+/* Notes panel expand/collapse */
 .notes-panel {
   transition: max-height 0.3s ease, opacity 0.3s ease;
   overflow: hidden;
 }
 
-/* ================================================
-   BACKGROUND PARALLAX
-   ================================================ */
+/* Background parallax */
 .parallax-bg {
   transition: transform 0.1s ease-out;
 }
 
-/* ================================================
-   CALENDAR GRID ANIMATIONS
-   ================================================ */
+/* Calendar grid animations */
 @keyframes datePop {
   0% {
     transform: scale(0.9);
@@ -155,9 +141,7 @@ body {
   animation: datePop 0.2s ease-out;
 }
 
-/* ================================================
-   CLOCK DIGIT FLIP
-   ================================================ */
+/* Clock digit flip */
 @keyframes digitFlip {
   0% {
     transform: rotateX(0deg);
@@ -181,9 +165,7 @@ body {
   animation: digitFlip 0.3s ease-in-out;
 }
 
-/* ================================================
-   GLASS CONTAINER & BUTTONS
-   ================================================ */
+/* Glass container and buttons */
 .glass-container {
   padding: 1.5rem;
 }
@@ -221,9 +203,7 @@ body {
   transform: scale(1.02);
 }
 
-/* ================================================
-   CUSTOM SCROLLBAR
-   ================================================ */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -241,16 +221,12 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* ================================================
-   TEXT SHADOW
-   ================================================ */
+/* Text shadow */
 .drop-shadow-lg {
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* ================================================
-   FOCUS RING FOR SELECTED DATES
-   ================================================ */
+/* Focus ring for selected date */
 .selected-range-glow {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 255, 255, 0.2);
 }
