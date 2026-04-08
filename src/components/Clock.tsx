@@ -13,8 +13,6 @@ interface ClockProps {
 
 export default function Clock({ style, containerOpacity }: ClockProps) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
-
-  // Isolated timer - only updates this component
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());

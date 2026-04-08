@@ -28,7 +28,7 @@ export interface MonthData {
     accent: string;
   };
 }
-
+/*
 export const MONTHS: MonthData[] = [
   { name: 'January', image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80', theme: { primary: '#1e3a5f', secondary: '#2d5a87', accent: '#4a90d9' } },
   { name: 'February', image: 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=800&q=80', theme: { primary: '#5c3d2e', secondary: '#8b5a4a', accent: '#d4846c' } },
@@ -42,15 +42,13 @@ export const MONTHS: MonthData[] = [
   { name: 'October', image: 'https://images.unsplash.com/photo-1508193638397-1c4234db14d9?w=800&q=80', theme: { primary: '#6b4a2d', secondary: '#a87a4a', accent: '#d4a86c' } },
   { name: 'November', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80', theme: { primary: '#3d4a5a', secondary: '#5a708b', accent: '#7a94b4' } },
   { name: 'December', image: 'https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=800&q=80', theme: { primary: '#4a2d3d', secondary: '#7a4a5a', accent: '#a46c7c' } },
-];
+];*/
 
-export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
+export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const HOLIDAYS: Record<number, { day: number; name: string }[]> = {
-  0: [{ day: 1, name: "New Year's Day" }],
-  1: [{ day: 26, name: 'Republic Day' }],
-  6: [{ day: 15, name: 'Independence Day' }],
-  8: [{ day: 2, name: 'Gandhi Jayanti' }],
+  0:  [{ day: 1, name: "New Year's Day" }, { day: 26, name: 'Republic Day' }],
+  7:  [{ day: 15, name: 'Independence Day' }],
+  9: [{ day: 2, name: 'Gandhi Jayanti' }],
   11: [{ day: 25, name: 'Christmas Day' }],
 };
 
@@ -67,13 +65,13 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
   const firstDay = getFirstDayOfMonth(year, month);
   const today = new Date();
   const monthHolidays = HOLIDAYS[month] || [];
-  
+
   const days: CalendarDay[] = [];
-  
+
   const prevMonth = month === 0 ? 11 : month - 1;
   const prevYear = month === 0 ? year - 1 : year;
   const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
-  
+
   for (let i = firstDay - 1; i >= 0; i--) {
     days.push({
       date: new Date(prevYear, prevMonth, daysInPrevMonth - i),
@@ -84,7 +82,7 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
       holidayName: null,
     });
   }
-  
+
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month, i);
     const isToday = date.toDateString() === today.toDateString();
@@ -98,11 +96,11 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
       holidayName: holiday?.name || null,
     });
   }
-  
+
   const remainingDays = 42 - days.length;
   const nextMonth = month === 11 ? 0 : month + 1;
   const nextYear = month === 11 ? year + 1 : year;
-  
+
   for (let i = 1; i <= remainingDays; i++) {
     days.push({
       date: new Date(nextYear, nextMonth, i),
@@ -113,7 +111,7 @@ export function generateCalendarDays(year: number, month: number): CalendarDay[]
       holidayName: null,
     });
   }
-  
+
   return days;
 }
 
