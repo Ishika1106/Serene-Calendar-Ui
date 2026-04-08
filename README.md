@@ -247,7 +247,6 @@ npm start
 
 ## Screenshot
 
-Add a screenshot of the UI below:
 
 ![Serene Calendar UI](./public/screenshot.png)
 
