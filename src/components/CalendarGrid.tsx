@@ -11,6 +11,7 @@ interface CalendarGridProps {
   selectedEnd: Date | null;
   onSelectStart: (date: Date) => void;
   onSelectEnd: (date: Date | null) => void;
+  containerOpacity?: number; 
 }
 
 export default function CalendarGrid({
@@ -21,7 +22,8 @@ export default function CalendarGrid({
   selectedEnd,
   onSelectStart,
   onSelectEnd,
-}: CalendarGridProps) {
+  containerOpacity,
+}: CalendarGridProps){
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [showHoliday, setShowHoliday] = useState<string | null>(null);
 
